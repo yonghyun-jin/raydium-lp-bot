@@ -23,15 +23,7 @@ A bot that provides liquidity to a Raydium CLMM SOL/USDC pool, keeps the positio
 
 ## Real results
 
-The latest version ran on real money from Sept 21 to Oct 20, 2026, across 11 positions:
-
-- Fees earned: **$166.32**
-- Impermanent loss: **$348.41**
-- Net: **−5.74%**. Just holding SOL over the same days: **−9.89%**
-
-Fees did not cover impermanent loss. It beat holding SOL because part of the position sat in USDC while SOL fell. These numbers come from the latest version, not v0.
-
-Every position broken down, plus a step-by-step setup guide: [papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0) (free, Google sign-in).
+See how the latest bot is doing, with every position broken down: **[papyruslearn.com/performance/lp-bot](https://www.papyruslearn.com/performance/lp-bot?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0-results)** (free, Google sign-in)
 
 ---
 
