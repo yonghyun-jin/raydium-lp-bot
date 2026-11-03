@@ -1,10 +1,8 @@
 # LP Bot v0: Raydium SOL/USDC liquidity bot
 
-> **This is v0, the free version.** It opens every position on a fixed −4% to +4% range and gets no further updates.
->
-> **The latest version** picks its range with a model and ships every patch. Pro members download the newest codebase as soon as it's ready: **[papyruslearn.com/pro](https://www.papyruslearn.com/pro?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0)**
+A bot that provides liquidity to a Raydium CLMM SOL/USDC pool, keeps the position in range, and records every dollar it makes and loses — fees, impermanent loss, market move, all of it. You control it from Telegram.
 
-A bot that provides liquidity to a Raydium CLMM SOL/USDC pool, keeps the position in range, and records every dollar it makes and loses. You control it from Telegram.
+👉 **Setup guide, latest updates, and live bot activity: [papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy)**
 
 ![The P&L dashboard: every fee, impermanent loss, market move and cost, against just holding](docs/images/dashboard-demo.gif)
 
@@ -35,7 +33,6 @@ This is where the full setup walkthrough lives, along with every bot update and 
 
 > ## ⚠️ Read this first
 >
-> - **This bot signs real transactions with your wallet.** It needs your wallet's private key to do that.
 > - **Providing liquidity can lose money.** Impermanent loss, swap costs and network fees can be bigger than the fees you earn. Nothing here is a promise of returns.
 > - **Use a brand-new wallet** that holds only what you are willing to lose, and start small.
 
