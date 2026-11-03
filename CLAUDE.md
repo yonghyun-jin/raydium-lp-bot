@@ -18,7 +18,7 @@ The user wants this bot running. Walk them through it one step at a time, in pla
 3. **Create `.env`.** `cp .env.example .env` (skip if `.env` already exists).
 4. **Fill in `.env`, one value at a time.** For each, explain what it is and where to get it, using the matching section of README.md ("Create your `.env`"). Order:
    1. `WALLET_PRIVATE_KEY`: a brand-new wallet. Read them the private key risks from README.md first.
-   2. `SOLANA_RPC_URL`: Helius free tier.
+   2. `SOLANA_RPC_URL`: must be mainnet (`.env.example` defaults to devnet). You may write `https://api.mainnet-beta.solana.com` yourself to get started; recommend a free Helius URL before they go live, which they paste themselves (it contains an API key).
    3. `POOL_ID`: suggest `3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv`. You may write this one into `.env` yourself.
    4. `TELEGRAM_BOT_TOKEN`: from @BotFather.
    5. `TELEGRAM_ALLOWED_USER_IDS`: from @userinfobot, or from the bot's refusal message later.

@@ -69,7 +69,7 @@ Claude reads [`CLAUDE.md`](CLAUDE.md), installs everything, creates your `.env`,
 |---|---|---|---|
 | 1 | A **new Solana wallet**, used only for this bot | free | 2 min |
 | 2 | **SOL and/or USDC** in it, plus about **0.1 SOL** for fees and rent | your capital | |
-| 3 | A **Solana RPC URL** (Helius free tier works) | free | 3 min |
+| 3 | A **Solana RPC URL**: the public one to start, a free Helius one before real money | free | 0–3 min |
 | 4 | A **Telegram bot token** and your **Telegram user id** | free | 3 min |
 | 5 | A **PostgreSQL database** (Railway, Supabase, Neon, or local) | free tier | 5 min |
 | 6 | Somewhere to run it 24/7: **Railway**, a VPS, or your own machine | ~$5/month | 10 min |
@@ -125,11 +125,15 @@ Read the private key section above before you do this.
 
 #### `SOLANA_RPC_URL`: how the bot talks to Solana
 
-1. Sign up at [helius.dev](https://helius.dev) (free tier: enough to start).
-2. In the dashboard, open **Endpoints** (or **RPCs**) and copy the **Mainnet** URL. It looks like `https://mainnet.helius-rpc.com/?api-key=...`.
-3. Paste it after `SOLANA_RPC_URL=`.
+This must be a **mainnet** URL. `.env.example` starts on devnet, where the SOL/USDC pool doesn't exist, so change it.
 
-The public `https://api.mainnet-beta.solana.com` works for testing but is slow and rate-limited.
+**To start, no sign-up:** use Solana's free public URL.
+
+```
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+```
+
+**Before you put real money in:** switch to a free [Helius](https://helius.dev) URL. The public one is rate-limited, and a rejected request in the middle of a rebalance can slow the bot down when it matters. Sign up, open **Endpoints** (or **RPCs**) in the dashboard, copy the **Mainnet** URL (`https://mainnet.helius-rpc.com/?api-key=...`) and paste it after `SOLANA_RPC_URL=`.
 
 #### `POOL_ID`: which pool to provide liquidity to
 
