@@ -25,6 +25,12 @@ A bot that provides liquidity to a Raydium CLMM SOL/USDC pool, keeps the positio
 
 See how the latest bot is doing, with every position broken down: **[papyruslearn.com/performance/lp-bot](https://www.papyruslearn.com/performance/lp-bot?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0-results)** (free, Google sign-in)
 
+## Setup guide & latest bot updates
+
+👉 **[papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy)**
+
+This is where the full setup walkthrough lives, along with every bot update and live position activity. Easier to follow than this README, and kept up to date with every patch.
+
 ---
 
 > ## ⚠️ Read this first
