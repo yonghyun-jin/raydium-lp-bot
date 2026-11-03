@@ -1,0 +1,13 @@
+-- What the router said it would do, preserved on a swap row.
+--
+-- Additive and nullable: every existing row keeps its meaning and reads back as
+-- "no quote preserved". Nothing reads this column yet -- the row builder that
+-- populates it ships in the next slice -- so this migration is safe to run
+-- against the OLD container, which Railway does by design
+-- (preDeployCommand = prisma migrate deploy, so migrations land before the new
+-- image takes traffic).
+--
+-- JSONB rather than TEXT so a later question about the route can be asked in
+-- SQL without parsing. `predictions.features` and `neighbor_stats` already set
+-- that precedent in this schema.
+ALTER TABLE "ledger_entries" ADD COLUMN "quote" JSONB;

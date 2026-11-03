@@ -1,0 +1,44 @@
+{
+  "name": "lp-bot-v0",
+  "version": "0.1.0",
+  "description": "Raydium CLMM SOL-USDC LP bot, v0: fixed +/-4% range, Telegram control",
+  "scripts": {
+    "test": "jest",
+    "test:connection": "npx ts-node src/raydium/test-connection.ts",
+    "test:positions": "npx ts-node src/raydium/test-positions.ts",
+    "spend:swap": "npx ts-node src/raydium/test-swap.ts",
+    "rehearse:open": "DRY_RUN=true npx ts-node scripts/rehearse-open.ts",
+    "spend:create-position": "npx ts-node src/raydium/test-create-position.ts",
+    "benchmark": "npx ts-node src/raydium/benchmark.ts",
+    "telegram": "npx ts-node scripts/run-telegram-bot.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.49-alpha",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "^25.9.1",
+    "bn.js": "^5.2.3",
+    "bs58": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "prisma": "^5.22.0",
+    "telegraf": "^4.16.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.5.1",
+    "ts-jest": "^29.4.12"
+  }
+}

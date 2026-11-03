@@ -1,0 +1,26 @@
+# Railway Deployment Configuration
+# https://docs.railway.com/reference/railway-toml
+#
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Migrations run before the new container takes traffic, not chained into the
+# start command (where a failure would look like a crash-loop instead).
+preDeployCommand = ["npx prisma migrate deploy"]
+startCommand = "npm run telegram"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# No healthcheckPath: this is a long-polling Telegram worker, not an HTTP
+# service. It never binds a port, so any healthcheck would fail the deploy.
+
+# Environment variables (set in Railway dashboard):
+# - DATABASE_URL (auto-injected when you add PostgreSQL)
+# - TELEGRAM_BOT_TOKEN
+# - SOLANA_RPC_URL
+# - WALLET_PRIVATE_KEY
+# - POOL_ID
+# - ALLOW_REAL_MONEY=true   (required; without it every send is blocked)

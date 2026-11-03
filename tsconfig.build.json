@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "scripts/**/*", "tests/**/*", "check_pos.ts", "force_reposition.ts", "src/raydium/swap-usdt-to-usdc.ts"]
+}

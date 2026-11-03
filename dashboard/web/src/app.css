@@ -1,0 +1,403 @@
+/*
+ * Tailwind's entry point, and the only stylesheet this app has.
+ *
+ * PREFLIGHT IS ON. `@import "tailwindcss"` is self-contained -- `index.css`
+ * inlines the theme, preflight and the utilities into `@layer theme, base,
+ * components, utilities` -- so collapsing the two hand-rolled imports changed
+ * exactly one thing: `@layer base` stopped being empty. The reset it brings is
+ * what shadcn's generated components were always written against.
+ *
+ * THE PALETTE LIVES HERE NOW, AS PLAIN CSS, AND MOVING IT WAS THE WHOLE RISK
+ * OF THIS COMMIT. `@theme inline` below holds about fifty POINTERS --
+ * `--color-surface-1: var(--surface-1)` and the rest -- at names that used to
+ * be declared in `styles.css`. Delete that file without bringing them and
+ * every pointer dangles: `var()` with no declaration is invalid at
+ * computed-value time, so each property silently falls back to
+ * inherited-or-initial. Tailwind never resolves them (`inline` copies the
+ * value TEXT), so the build is green, the typecheck is green, every test
+ * passes, and the app renders as unstyled text on a white page in both
+ * themes. There is no error anywhere. That is why the move and the deletion
+ * are one commit and cannot be split.
+ *
+ * WHY THE BLOCKS ARE NOT INSIDE `@theme`, which is the obvious-looking move:
+ * `@theme` takes a flat list and cannot hold a media query or a
+ * `:root[data-theme]` selector, so it cannot express a dark palette at all;
+ * these names are not Tailwind namespaces, so they would generate nothing;
+ * and `--radius`/`--font` would collide with real namespaces. Plain custom
+ * properties on `:root`, aliased back in through `@theme inline`, is Tailwind
+ * v4's own answer to theming and is the shape shadcn generates against.
+ *
+ * WHY `@layer base` AND NOT UNLAYERED: the `body` rule below sets a
+ * background, and a `bg-*` utility has to be able to beat it -- `utilities`
+ * outranks `base`. The palette has to sit in a layer that outranks `theme`
+ * for the same cascade reason, which `base` does.
+ */
+@import 'tailwindcss';
+
+/*
+ * THE THREE PALETTE BLOCKS, MOVED VERBATIM FROM `styles.css`, IN ORDER.
+ *
+ * The order is load-bearing and nothing in the file says so twice, so: the
+ * media query's `:root:where(:not([data-theme='light']))` has the SAME (0,1,0)
+ * specificity as the plain `:root` above it -- `:where()` contributes nothing
+ * -- so it wins only by coming later. Reorder them and the OS dark preference
+ * stops working, with no error. `:root[data-theme='dark']` is (0,2,0) and wins
+ * from anywhere, which is what "the toggle wins in both directions" means.
+ * All three must also stay in ONE layer: a layer difference is resolved before
+ * specificity, so splitting them replaces that reasoning with layer order.
+ */
+@layer base {
+  /*
+   * Tokens first, roles everywhere else.
+   *
+   * Dark is a SELECTED set of steps for the dark surface, not an inverted light
+   * palette. Declared under both the media query (the OS setting) and the
+   * data-theme scope (the toggle), so the toggle wins in both directions.
+   *
+   * The two series colours are categorical slots 1 and 2, validated against both
+   * surfaces: worst-pair CVD ΔE 24.7 light / 26.8 dark, normal-vision 33.6 / 31.8.
+   */
+
+  :root {
+    color-scheme: light;
+
+    --surface-0: #f4f4f1;
+    --surface-1: #fcfcfb;
+    --border: #e0dfd9;
+    --border-strong: #c9c7be;
+
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #86847c;
+
+    /* slot 1 — the bot */
+    --series-lp: #2a78d6;
+    /* slot 2 — the benchmark */
+    --series-hodl: #eb6834;
+    --series-mix: #86847c;
+
+    --good: #007a4d;
+    --bad: #c3352f;
+    --warn-surface: #fdf6e3;
+    --warn-border: #e8d9a8;
+
+    --radius: 10px;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /*
+     * RAW VALUES FOR THE THEMED TOKENS. They live here rather than in
+     * `app.css`'s `@theme` for two reasons, both verified by compiling:
+     * `@theme` holds one value per key, so a literal there would need a `dark:`
+     * variant on every use site; and `@theme inline` does NOT emit its key into
+     * `:root`, so anything read back with `getComputedStyle` has to be a real
+     * custom property. Everything that is neither themed nor read back is a
+     * plain literal in `@theme` instead -- see `app.css`.
+     */
+
+    /* Text on `--series-lp`. White is 4.41:1 on it in light and 3.64:1 in dark,
+       so a white label on a primary button fails AA for normal text in BOTH
+       themes. Darkening the blue was rejected: `theme.ts` reads the same value
+       for the chart line, and the palette's measured CVD separation depends on
+       it. Flipping the FOREGROUND is the one move that costs nothing else. */
+    --on-accent: #ffffff;
+
+    /* Tokenised at their CURRENT values, deliberately unchanged. Both are
+       black-alpha with no dark branch, so on `#121211` they are nearly
+       invisible and a floating panel is separated by its border alone. Giving
+       dark its own shadow is a visible change and belongs in a unit that can be
+       judged on it, not in the one that is supposed to move nothing. */
+    --shadow-float: 0 4px 16px rgb(0 0 0 / 0.12);
+    --shadow-popover: 0 6px 24px rgb(0 0 0 / 0.16);
+
+    /* Duplicated today in `.help-bubble`'s width AND in `Help.tsx`'s `WIDTH`,
+       with a comment in each saying to change both. One can now read the other.
+       No `@theme` namespace fits either, so they stay plain properties. */
+    --popover-width: 300px;
+    --z-popover: 60;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme='light'])) {
+      color-scheme: dark;
+
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --border: #2e2e2b;
+      --border-strong: #46453f;
+
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8f8e85;
+
+      --series-lp: #3987e5;
+      --series-hodl: #d95926;
+      --series-mix: #8f8e85;
+
+      --good: #3aa878;
+      --bad: #e66767;
+      --warn-surface: #2a2415;
+      --warn-border: #4d431f;
+
+      /* Near-black, not white: see the light block. */
+      --on-accent: #0b0b0b;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --border: #2e2e2b;
+    --border-strong: #46453f;
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8f8e85;
+
+    --series-lp: #3987e5;
+    --series-hodl: #d95926;
+    --series-mix: #8f8e85;
+
+    --good: #3aa878;
+    --bad: #e66767;
+    --warn-surface: #2a2415;
+    --warn-border: #4d431f;
+
+    /* Near-black, not white: see the light block. */
+    --on-accent: #0b0b0b;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border, currentColor);
+  }
+
+  /*
+   * PREFLIGHT HAS NO `body` RULE AT ALL, and sets no font size anywhere. Its
+   * only root typography is on `html` -- line-height, text-size-adjust,
+   * tab-size, font-family, feature and variation settings, tap-highlight -- so
+   * these four have no replacement and are not optional:
+   *
+   *   background / color   without them the page has no background and, in
+   *                        dark mode, black text on white
+   *   font-size            otherwise the base becomes the browser's 16px, a
+   *                        silent ~7% growth on everything without an explicit
+   *                        `text-*` utility
+   *   font-smoothing       not in preflight; dropping it thickens every glyph
+   *                        on macOS, which reads as a weight change across the
+   *                        whole app
+   *
+   * `font-family` and `line-height` are NOT here, and that is deliberate
+   * rather than an omission: preflight's `html` rule resolves
+   * `--default-font-family` through `--font-sans` to `var(--font)` and sets
+   * `line-height: 1.5`, which are exactly the two values this rule used to
+   * carry. That resolution is a DEPENDENCY on the `--font` / `--mono` names
+   * above -- rename either and the app loses its typeface with no error.
+   */
+  body {
+    background-color: var(--surface-0);
+    color: var(--text-primary);
+    font-size: var(--text-root);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']) *, :root:not([data-theme='light'])) {
+      @slot;
+    }
+  }
+  &:where([data-theme='dark'] *, [data-theme='dark']) {
+    @slot;
+  }
+}
+
+@theme inline {
+  /* The project's own names, so a Tailwind class reads like the token it uses. */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary-text: var(--text-primary);
+  --color-secondary-text: var(--text-secondary);
+  --color-muted-text: var(--text-muted);
+
+  --color-series-lp: var(--series-lp);
+  --color-series-hodl: var(--series-hodl);
+  /* The chart's third line. It borrowed `--text-muted` until `21-charts`,
+     which meant the axis LABELS and a data SERIES could not be changed
+     independently -- it ships at today's muted values, so nothing moves and
+     the coupling is gone. */
+  --color-series-mix: var(--series-mix);
+
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-warn-surface: var(--warn-surface);
+  --color-warn-border: var(--warn-border);
+
+  /*
+   * The names shadcn's generated components are written against. Kept as
+   * aliases of the tokens above rather than as new values, so `shadcn add`
+   * output drops in already wearing this dashboard's palette and there is
+   * still exactly one place a colour is defined.
+   */
+  --color-background: var(--surface-0);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-1);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-1);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--series-lp);
+  --color-primary-foreground: var(--on-accent);
+  --color-secondary: var(--surface-0);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-0);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-0);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--bad);
+  --color-destructive-foreground: var(--on-accent);
+  --color-input: var(--border);
+  --color-ring: var(--series-lp);
+
+  /* Themed or read back at runtime, so the raw value lives in `styles.css`'s
+     `:root` and this only aliases it -- see the comment there. */
+  --color-on-accent: var(--on-accent);
+  --shadow-float: var(--shadow-float);
+  --shadow-popover: var(--shadow-popover);
+
+  /* `--radius-xl` exists so a generated component that writes `rounded-xl`
+     is not silently left on Tailwind's own 0.75rem, with a literal in the
+     compiled output and no token to change. One step above `--radius`, which
+     is shadcn's own convention. Card SURFACES are not xl -- they are 10px,
+     which is `--radius-lg`, and the project `Card` says so. */
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+}
+
+/*
+ * NEITHER THEMED NOR READ BACK, so these are literals rather than aliases: one
+ * value each, identical in light and dark, and nothing calls
+ * `getComputedStyle` for them. Putting them in `@theme` (not `@theme inline`)
+ * also emits them into `:root`, so plain CSS can still reach them while
+ * `styles.css` lives.
+ *
+ * The type scale collapses 16 distinct px literals plus one `em` down to 12
+ * steps. Four of those literals round to a neighbour -- 10->9, 11.5->11,
+ * 14.5->14, and the tracking -0.005em->-0.01em -- which is the only reason
+ * this file can claim "change one, change everywhere": a scale with 16 steps
+ * one pixel apart is not a scale, it is 16 decisions.
+ *
+ * NOTHING CONSUMES THESE YET. `styles.css` still carries its literals and
+ * dies component by component; each migration unit swaps its own rules for
+ * these utilities. That is why this unit must show a zero pixel diff.
+ */
+@theme {
+  --text-2xs: 9px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 12.5px;
+  --text-md: 13px;
+  --text-lg: 13.5px;
+  --text-xl: 14px;
+  --text-2xl: 15px;
+  --text-3xl: 16px;
+  --text-4xl: 24px;
+  --text-5xl: 26px;
+  --text-6xl: 31px;
+
+  /*
+   * EVERY STEP PINS ITS PAIRED LINE-HEIGHT, and leaving them out is a trap
+   * that cost a full red screenshot run. Overriding `--text-lg` in `@theme`
+   * does NOT clear Tailwind's own `--text-lg--line-height`, so `text-lg`
+   * silently carried `calc(1.75 / 1.125)` into rules that had always
+   * INHERITED their line-height from `body`'s 1.5. Nothing in this sheet pairs
+   * a size with a line-height except the hero figure, so `inherit` is the
+   * honest default and the one that reproduces the old cascade exactly.
+   */
+  --text-2xs--line-height: inherit;
+  --text-xs--line-height: inherit;
+  --text-sm--line-height: inherit;
+  --text-base--line-height: inherit;
+  --text-md--line-height: inherit;
+  --text-lg--line-height: inherit;
+  --text-xl--line-height: inherit;
+  --text-2xl--line-height: inherit;
+  --text-3xl--line-height: inherit;
+  --text-4xl--line-height: inherit;
+  --text-5xl--line-height: inherit;
+  --text-6xl--line-height: 1.1;
+
+  /* `.unit` sizes itself relative to its row, so it cannot join the scale. */
+  --text-unit: 0.85em;
+
+  /*
+   * THE DOCUMENT'S OWN BASE, which preflight does not supply -- it sets no
+   * font-size anywhere, so without this the base is the browser's 16px and
+   * everything with no explicit `text-*` grows ~7%.
+   *
+   * NOT `--text-2xl`, which is also 15px. They are the same NUMBER and not the
+   * same QUANTITY: this is what every unstyled element inherits, while
+   * `--text-2xl` is a step two components ask for by name (an episode heading
+   * and the failure panel). Aliasing them would mean resizing an episode
+   * heading silently rescales the whole document.
+   */
+  --text-root: 15px;
+  --text-root--line-height: inherit;
+
+  /* 650 is the hero figure's weight and the only value off Tailwind's ladder;
+     400/500/600 are already `normal`/`medium`/`semibold`. */
+  --font-weight-figure: 650;
+
+  /* The display heading's pair. Tailwind's own `leading-tight` is 1.25, which
+     is a pixel and a third taller at 26px and shifts every page's content
+     down; `--tracking-display` is already the matching half of this setting. */
+  --leading-display: 1.2;
+
+  /* The two-line transaction cell: a bold action over a muted sub-line, in
+     one `<td>`. 1.35 is tighter than `body`'s 1.5 so the pair reads as one
+     thing, and Tailwind has no step at it -- `leading-snug` is 1.375. */
+  --leading-stacked: 1.35;
+
+  --tracking-display: -0.01em;
+  --tracking-caps: 0.04em;
+  --tracking-caps-wide: 0.08em;
+
+  /* 3px, the chip. `lg`/`md`/`sm` already alias `--radius`. */
+  --radius-xs: 3px;
+
+  /* Shared numbers that are currently written twice or more. */
+  --breakpoint-rail: 861px;
+  --container-page: 1040px;
+  --container-sidebar: 228px;
+
+  /* 76ch replaces 72ch and 78ch. Two wrap points move; nothing else does. */
+  --max-width-note: 76ch;
+
+  /* The narrowest a column may get before its grid drops one. Both have to
+     appear INSIDE a class string, which is exactly the hard-coded value the
+     end state forbids, so both get a name. */
+  --fact-col-min: 270px;
+  --tile-col-min: 190px;
+
+  /* The `USD` in a column header, which is the one place this sheet tracks
+     POSITIVE -- it reads as small caps while the figures below it are tight.
+     `--tracking-caps` is 0.04em and belongs to the uppercase eyebrows. */
+  --tracking-unit: 0.02em;
+
+  /* Overrides Tailwind's 1s. The ring has always spun at 720ms, and the
+     `prefers-reduced-motion` branch that stops it must survive the move. */
+  --animate-spin: spin 720ms linear infinite;
+}

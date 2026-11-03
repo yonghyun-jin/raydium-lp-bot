@@ -1,0 +1,23 @@
+{
+  "//": "The browser half. Bundler resolution because Vite 8 and its plugins are ESM-only.",
+  "//paths": "No baseUrl beside `paths`: TS6 deprecates it, and paths without it resolve relative to THIS file, which is what the `@/` alias wants. The bundler half of the same alias lives in vite.config.ts and the two must agree.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src/**/*", "vite.config.ts"]
+}

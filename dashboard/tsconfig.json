@@ -1,0 +1,23 @@
+{
+  "//": "The server half: CommonJS, run through ts-node exactly as the bot is. The browser half has its own config (web/tsconfig.json) because Vite 8 ships ESM-only types that need bundler resolution.",
+  "//paths": "`paths` below is inert for the server, which imports nothing through the alias. It is here because `shadcn add` resolves components.json's aliases against the tsconfig at the PACKAGE ROOT, and without it the CLI writes a literal `@/` directory instead of into web/src.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["web/src/*"] }
+  },
+  "include": ["server/**/*", "../src/pnl/**/*"],
+  "exclude": ["node_modules", "web"]
+}

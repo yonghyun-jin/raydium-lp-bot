@@ -1,0 +1,295 @@
+// Prisma Schema for LP Auto Strategy
+// Database: PostgreSQL (Railway)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Ledger: Track all DeFi token movements
+// 1 row = 1 token movement
+// ============================================
+
+model LedgerEntry {
+  id           String   @id @default(cuid())
+
+  // Transaction grouping
+  txId         String   @map("tx_id")           // On-chain tx signature
+  operationId  String   @map("operation_id")    // Groups rows for P&L
+
+  // When & Where
+  timestamp    DateTime @default(now())
+  chain        String   @default("solana")
+  protocol     String                           // 'jupiter' | 'raydium'
+
+  // What happened
+  action       String                           // 'swap' | 'create_lp' | 'close_lp' | 'harvest'
+  /// principal | reward | fee | interest | debt | slippage | gas | cost
+  ///
+  /// `debt` is the one that changes P&L correctness: a borrow is recorded as a
+  /// principal row AND an opposing debt row so the pair nets to zero. Summing
+  /// every row without excluding `debt` reports borrowed money as profit.
+  /// See docs/v1-confidential/ledger-schema.md.
+  category     String
+
+  // Token flow
+  //
+  // `token` is a LABEL for humans; `tokenAddress` is the IDENTITY. Solana USDC,
+  // Ethereum USDC and Arbitrum USDC are distinct assets that share a symbol, so
+  // anything that must be correct groups by (chain, tokenAddress). Nullable
+  // only because native assets (SOL, ETH) do not always have one.
+  token         String                          // 'SOL' | 'USDC' -- display only
+  tokenAddress  String?  @map("token_address")  // mint / contract -- identity
+  amount        Float                           // Positive = in, Negative = out
+  priceUsd      Float    @map("price_usd")      // Price of 1 token at recording
+  valueUsd      Float    @map("value_usd")      // amount × priceUsd, frozen
+  /// Where priceUsd came from. For SOL/USDC this hardly matters; on a thin pair
+  /// the whole P&L rests on this one number and must be auditable later.
+  priceSource   String?  @map("price_source")
+
+  // Optional
+  positionId   String?  @map("position_id")     // LP position NFT mint
+  description  String?
+
+  /// What the router SAID it would do, preserved verbatim on a swap row.
+  ///
+  /// Every field in here is a quote-time statement, not a measurement, and the
+  /// distinction is load-bearing: `priceImpactPct` is a pre-trade estimate and
+  /// is NOT the execution slippage, which is this quote's `outAmount` against
+  /// what the wallet actually received. The second is a row; the first never is.
+  ///
+  /// Kept raw so a later question about the route -- was a hop expensive, did
+  /// the platform take a cut -- needs no new plumbing. Null on every row that
+  /// is not a swap, and on a swap whose quote could not be preserved, which
+  /// must be read as "unknown", never as "no fees".
+  quote        Json?
+
+  // Indexes for common queries
+  @@index([operationId])
+  @@index([txId])
+  @@index([category])
+  @@index([timestamp])
+  @@index([chain, tokenAddress])
+
+  @@map("ledger_entries")
+}
+
+// ============================================
+// BotState: Telegram bot session state
+// Single row per user (upsert pattern)
+// ============================================
+
+model BotState {
+  id              String   @id @default(cuid())
+
+  // User identity
+  /// BIGINT, not Int. Telegram user ids exceed 32 bits -- a real id of
+  /// 10 digits does not fit INT4 (max 2147483647) and Postgres rejects the
+  /// insert outright. This was latent for as long as bot_states had no writer.
+  telegramUserId  BigInt   @unique @map("telegram_user_id")
+  telegramChatId  BigInt   @map("telegram_chat_id")
+
+  // State machine
+  stage           String   @default("IDLE")    // IDLE | AWAITING_AMOUNT | MONITORING | etc.
+  isMonitoring    Boolean  @default(false) @map("is_monitoring")
+
+  // Investment settings
+  investmentAmount Float?  @map("investment_amount")
+  solAmount        Float?  @map("sol_amount")
+  usdcAmount       Float?  @map("usdc_amount")
+
+  // Position tracking
+  positionNftMint String?  @map("position_nft_mint")
+
+  // Failure tracking
+  rebalancesToday    Int      @default(0) @map("rebalances_today")
+  lastRebalanceDate  String?  @map("last_rebalance_date")  // YYYY-MM-DD
+
+  /// Desired state: IDLE | DEPLOYED.
+  ///
+  /// NOT isMonitoring, which conflates "the operator wants the bot running" with
+  /// "a position exists to watch". Those came apart on 2026-09-25: monitoring was
+  /// on, there was nothing to monitor, and the loop's `if (!nftMint) return` did
+  /// nothing every 30s while $1031.18 sat undeployed. This is the field that makes
+  /// "I should have a position and do not" an answerable question.
+  deployIntent       String   @default("IDLE") @map("deploy_intent")
+
+  /// What a failed reopen was supposed to deploy, in USD.
+  ///
+  /// Persisted, not recomputed: by the time recovery runs the position it came
+  /// from is burned, so the budget would silently fall back to
+  /// investmentAmount -- which is how a retry came to read `Budget $1000.00`
+  /// against $1031.18 actually withdrawn.
+  strandedUsd        Float?    @map("stranded_usd")
+  strandedSince      DateTime? @map("stranded_since")
+
+  /// Recovery's own budget, separate from rebalancesToday, which is incremented
+  /// before any work and fails closed -- so reusing it would let three failures
+  /// block the very retries meant to undo them.
+  recoveryAttempts   Int       @default(0) @map("recovery_attempts")
+  lastRecoveryAt     DateTime? @map("last_recovery_at")
+
+  /// The tip that last landed, in lamports. Lets the ladder resume instead of
+  /// re-deriving its start every process; null is a cold start.
+  lastTipLamports    Int?      @map("last_tip_lamports")
+
+  // Timestamps
+  startedAt          DateTime? @map("started_at")
+  lastNotification   DateTime? @map("last_notification")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("bot_states")
+}
+
+// ============================================
+// Position: Track LP positions
+// ============================================
+
+model Position {
+  id            String   @id @default(cuid())
+
+  // Position identity
+  nftMint       String   @unique @map("nft_mint")  // Position NFT mint address
+  poolId        String   @map("pool_id")
+
+  // Range
+  rangeLower    Float    @map("range_lower")
+  rangeUpper    Float    @map("range_upper")
+
+  // Deposits
+  solDeposited  Float    @map("sol_deposited")
+  usdcDeposited Float    @map("usdc_deposited")
+
+  // Status
+  isOpen        Boolean  @default(true) @map("is_open")
+
+  // When the position was opened.
+  //
+  // NULLABLE on purpose. A position adopted via /done was not created by this
+  // bot and its true open time is not recoverable from the chain -- position
+  // age is not stored on-chain. Writing Date.now() there silently converts
+  // "unknown" into "brand new", which routes a mature position into the
+  // under-6h Early Exit branch. Unknown age must reach the age reader AS
+  // unknown, so it can ask instead of assuming (docs/v1/database-schema.md).
+  openedAt      DateTime? @map("opened_at")
+  /// When this bot took over a position it did not create.
+  adoptedAt     DateTime? @map("adopted_at")
+  closedAt      DateTime? @map("closed_at")
+
+  // P&L (updated on close)
+  solWithdrawn  Float?   @map("sol_withdrawn")
+  usdcWithdrawn Float?   @map("usdc_withdrawn")
+  feesEarnedUsd Float?   @map("fees_earned_usd")
+
+  /// THE LATEST READING, overwritten every monitor tick. Not a time series.
+  ///
+  /// `getPositionDetails` already computes the position's live composition
+  /// every 30 seconds (src/raydium/client.ts) and `getPositionStatus` threw
+  /// amountA/amountB/totalValueUsd away, so an OPEN position could be shown no
+  /// unrealised figure at all -- the dashboard reads Postgres and Postgres did
+  /// not have them. Persisting them costs NO new chain call.
+  ///
+  /// ONE ROW PER POSITION, overwritten in place. This is current state, like
+  /// `isOpen`, and deliberately NOT the observations series C2 cut: there is no
+  /// history here, nothing appends, and no P&L figure reads it. A settled
+  /// operation's numbers come from `ledger_entries` and from nowhere else.
+  ///
+  /// Every column is nullable and they are NOT filled or missing together --
+  /// fees can be unreadable while amounts are fine, and "unknown" has to reach
+  /// the operator as unknown rather than as a zero that reads like a result.
+  lastReadAt      DateTime? @map("last_read_at")
+  lastPrice       Float?   @map("last_price")
+  lastSolAmount   Float?   @map("last_sol_amount")
+  lastUsdcAmount  Float?   @map("last_usdc_amount")
+  lastFeesUsd     Float?   @map("last_fees_usd")
+  lastInRange     Boolean? @map("last_in_range")
+
+  // Links
+  operationId   String?  @map("operation_id")  // Links to ledger entries
+  /// The position this one replaced. A rebalance closes one and opens another;
+  /// without the link the chain of rebalances -- and "how long did this capital
+  /// stay deployed" across them -- is unrecoverable.
+  prevPositionId String? @map("prev_position_id")
+
+  predictions   Prediction[]
+  observations  PositionObservation[]
+
+  @@index([poolId])
+  @@index([isOpen])
+  @@index([prevPositionId])
+
+  @@map("positions")
+}
+
+/// What the model said, and when.
+///
+/// Nothing recorded this before, so every range the bot ever produced is gone
+/// and "were the predictions any good?" is unanswerable from production data.
+/// Storing the features and neighbour statistics alongside the outcome is what
+/// makes the model improvable: without them a bad range is indistinguishable
+/// from bad luck.
+model Prediction {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now()) @map("created_at")
+  poolId        String   @map("pool_id")
+
+  /// 'ml' | 'fallback' -- stored so a fallback can never be mistaken for a
+  /// model output after the fact, the same reason the runtime tags it.
+  source        String
+  /// The price the bounds were anchored on (live pool price, not a stale close).
+  anchorPrice   Float    @map("anchor_price")
+  priceLower    Float    @map("price_lower")
+  priceUpper    Float    @map("price_upper")
+  widthPct      Float    @map("width_pct")
+  solRatio      Float    @map("sol_ratio")
+
+  /// The four volatility features the K-NN matched on.
+  features      Json?
+  /// K, coverage, and the neighbours' HIGH/LOW medians and stds.
+  neighborStats Json?    @map("neighbor_stats")
+
+  /// The position built from this prediction, if one was. Null when the
+  /// prediction was made but no position followed -- which is itself a fact
+  /// worth keeping.
+  positionId    String?  @map("position_id")
+  position      Position? @relation(fields: [positionId], references: [id])
+
+  @@index([poolId, createdAt])
+  @@index([positionId])
+  @@map("predictions")
+}
+
+/// A sample of a live position.
+///
+/// The 30s monitoring loop already fetches price, in-range status and value on
+/// every tick and throws all of it away. Time-in-range is the `Duration` in
+/// `Duration x (1/Width)` and is NOT derivable from opened_at/closed_at alone --
+/// a position can drift out of range and back while still open.
+///
+/// Do NOT write one row per tick: 30s sampling is 2,880 rows per position per
+/// day for data that barely changes. Write on every in-range <-> out-of-range
+/// transition (the signal) plus a heartbeat every ~15 minutes (the fee curve).
+model PositionObservation {
+  id            String   @id @default(cuid())
+  positionId    String   @map("position_id")
+  position      Position @relation(fields: [positionId], references: [id])
+  observedAt    DateTime @default(now()) @map("observed_at")
+
+  price         Float
+  inRange       Boolean  @map("in_range")
+  valueUsd      Float    @map("value_usd")
+  feesEarnedUsd Float?   @map("fees_earned_usd")
+
+  /// 'transition' | 'heartbeat' -- so the fee curve can be read separately from
+  /// the range-crossing events without inferring which is which.
+  reason        String   @default("heartbeat")
+
+  @@index([positionId, observedAt])
+  @@map("position_observations")
+}
