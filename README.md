@@ -114,10 +114,11 @@ Then fill in each value below. `.env.example` has comments for every line.
 
 #### `WALLET_PRIVATE_KEY`: your new bot wallet
 
-1. Open **Phantom** (or Solflare).
+1. Open **[Phantom](https://phantom.com/download)** (browser extension or phone app). Don't have it? Install it from that link, the official site. Fake Phantom extensions exist, so don't install it from a search ad.
 2. Create a **new account**. In Phantom: tap your account name at the top → **Add / Connect Wallet** → **Create New Account**. Name it something like "LP bot".
+   - Use a recovery-phrase wallet. A wallet you signed into **with Google or Apple can't export a private key**, so it won't work for the bot.
 3. Send it the SOL/USDC you want to use, plus about 0.1 SOL for fees.
-4. Export its key. In Phantom: **Settings** → **Manage Accounts** → pick the new account → **Show Private Key** → enter your password. (Menu names change between Phantom versions; look for "Private Key".)
+4. Export its key. In Phantom: click your avatar → **Settings** (gear icon) → **Manage Accounts** → pick the new account (on the phone app, tap the **⋯** next to it) → **Show Private Key** → choose **Solana** → enter your password. Phantom's own guide, with pictures: [View your recovery phrase or private keys in Phantom](https://help.phantom.com/hc/en-us/articles/25334064171795-View-your-recovery-phrase-or-private-keys-in-Phantom).
 5. Copy the long string (it starts with a number or letter, about 88 characters) and paste it after `WALLET_PRIVATE_KEY=` in `.env`.
 
 Read the private key section above before you do this.
