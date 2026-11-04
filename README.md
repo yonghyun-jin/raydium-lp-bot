@@ -2,7 +2,7 @@
 
 A bot that provides liquidity to a Raydium CLMM SOL/USDC pool, keeps the position in range, and records every dollar it makes and loses — fees, impermanent loss, market move, all of it. You control it from Telegram.
 
-👉 **Setup guide, latest updates, and live bot activity: [papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy)**
+👉 **Setup guide, latest updates, and live bot activity: [papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0-compare)**
 
 ![The P&L dashboard: every fee, impermanent loss, market move and cost, against just holding](docs/images/dashboard-demo.gif)
 
@@ -25,7 +25,7 @@ See how the latest bot is doing, with every position broken down: **[papyruslear
 
 ## Setup guide & latest bot updates
 
-👉 **[papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy)**
+👉 **[papyruslearn.com/strategy/lp-strategy](https://www.papyruslearn.com/strategy/lp-strategy?utm_source=github&utm_medium=readme&utm_campaign=lp-breakdown-nov&utm_content=lp-bot-v0-compare)**
 
 This is where the full setup walkthrough lives, along with every bot update and live position activity. Easier to follow than this README, and kept up to date with every patch.
 
